@@ -9,13 +9,13 @@ import pytz
 
 # 页面基础设置
 st.set_page_config(page_title="全球宏观与 BTC 战术看板", layout="wide")
-#5分钟时 300000 50分钟时3000000
-# 后台静默刷新 (5分钟)·
+
+# 🎯 后台静默刷新：改为 30000 毫秒 = 30 秒！
 st_autorefresh(interval=30000, key="macro_board_autorefresh")
 
-# 🎯 核心黑科技：全天候宏观倒计时引擎
+# 核心黑科技：全天候宏观倒计时引擎
 def get_market_countdown():
-    now_utc = datetime.now(pytz.utc)     
+    now_utc = datetime.now(pytz.utc)
     now_est = now_utc.astimezone(pytz.timezone('America/New_York'))
     
     # 1. 计算 BTC 日线结算倒计时 (下一个 UTC 00:00)
@@ -29,68 +29,65 @@ def get_market_countdown():
     next_us = now_est.replace(hour=9, minute=30, second=0, microsecond=0)
     if now_est >= next_us:
         next_us += timedelta(days=1)
-    # 智能跳过周末：如果下一个开盘日是周六或周日，自动顺延到周一
     while next_us.weekday() > 4: 
         next_us += timedelta(days=1)
     us_hours, us_rem = divmod((next_us - now_est).total_seconds(), 3600)
     us_mins = us_rem // 60
     
-    return f"⏳ **实战倒计时** ｜ 🪙 **BTC 日线结算**: 还有 `{int(btc_hours)}小时 {int(btc_mins)}分` ｜ 🇺🇸 **华尔街美股开盘**: 还有 `{int(us_hours)}小时 {int(us_mins)}分`"
+    return f"⏳ **实战倒计时** ｜ 🪙 **BTC 日结**: 还有 `{int(btc_hours)}时 {int(btc_mins)}分` ｜ 🇺🇸 **美股开盘**: 还有 `{int(us_hours)}时 {int(us_mins)}分`"
 
-# 渲染顶部倒计时横幅 (使用显眼的 Info 框)
 st.info(get_market_countdown(), icon="⏱️")
 
-# 顶部布局
-col_title, col_view, col_btn = st.columns([5, 4, 2])
+# 🎯 顶部布局升级：加入手机极简模式
+col_title, col_view, col_btn = st.columns([3, 5, 2])
 with col_title:
-    st.title("🌐 宏观与 BTC 指挥室")
+    st.title("🌐 宏观指挥室")
 with col_view:
     st.write("") 
     view_mode = st.radio(
         "视图选择", 
-        ["🔥 短线战术 (最近10天)", "🌍 宏观趋势 (最近半年)"], 
+        ["🔥 短线 (10天)", "🌍 宏观 (半年)", "📱 手机极简模式"], 
         horizontal=True, 
         label_visibility="collapsed"
     )
 with col_btn:
     st.write("") 
-    if st.button("🔄 手动立即刷新", use_container_width=True):
+    if st.button("🔄 手动刷新", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
-st.markdown("数据来源: Yahoo Finance | 主图: 双均线 | 副图: 成交量 | 自动刷新: 5分钟")
+st.markdown("数据来源: Yahoo Finance | 主图: 双均线 | 自动刷新: **30秒**")
 
 # 核心配置字典
 MARKETS = {
-    # 【第一排：地缘与大宗】
+    # 第一排：地缘与大宗
     "🟡 黄金期货 (Gold)": {"ticker": "GC=F", "ma": [10, 20], "desc": "乱世买黄金，对冲地缘与通胀", "tz": "America/New_York", "tz_name": "纽约"},
     "🛢️ 原油期货 (WTI)": {"ticker": "CL=F", "ma": [10, 20], "desc": "对中东局势敏感，飙升引发通胀", "tz": "America/New_York", "tz_name": "纽约"},
     "🪖 美军工ETF (ITA)": {"ticker": "ITA", "ma": [20, 50], "desc": "军工龙头集合，爆发冲突时飙升", "tz": "America/New_York", "tz_name": "纽约"},
 
-    # 【第二排：加密核心区】
+    # 第二排：加密核心区
     "🪙 比特币 (BTC)": {"ticker": "BTC-USD", "ma": [7, 30], "desc": "数字黄金，对全球资金面最敏感", "tz": "UTC", "tz_name": "UTC"},
     "💠 以太坊 (ETH)": {"ticker": "ETH-USD", "ma": [7, 30], "desc": "衡量加密市场真实狂热度的风向标", "tz": "UTC", "tz_name": "UTC"},
     "🏢 微策略 (MSTR)": {"ticker": "MSTR", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的先行指标", "tz": "America/New_York", "tz_name": "纽约"},
 
-    # 【第三排：股市与情绪】
+    # 第三排：股市与情绪
     "🇺🇸 标普500 (^GSPC)": {"ticker": "^GSPC", "ma": [20, 50], "desc": "美国经济基本面，决定宏观牛熊", "tz": "America/New_York", "tz_name": "纽约"},
     "🇺🇸 纳斯达克 (^IXIC)": {"ticker": "^IXIC", "ma": [20, 50], "desc": "与BTC高度联动，受降息预期驱动", "tz": "America/New_York", "tz_name": "纽约"},
     "😨 恐慌指数 (VIX)": {"ticker": "^VIX", "ma": [10, 20], "desc": ">20代表恐慌，暴涨说明华尔街抛售", "tz": "America/New_York", "tz_name": "纽约"},
 
-    # 【第四排：流动性根基】
+    # 第四排：流动性根基
     "⚓ 10年期美债 (^TNX)": {"ticker": "^TNX", "ma": [20, 50], "desc": "破4.5%则全面抽干风险资产流动性", "tz": "America/New_York", "tz_name": "纽约"},
     "💵 美元指数 (DXY)": {"ticker": "DX-Y.NYB", "ma": [20, 50], "desc": "美元强则BTC弱，资金回流美国标志", "tz": "America/New_York", "tz_name": "纽约"},
     "💣 垃圾债ETF (HYG)": {"ticker": "HYG", "ma": [20, 50], "desc": "暴跌意味资金链断裂，必定带崩BTC", "tz": "America/New_York", "tz_name": "纽约"},
 
-    # 【第五排：中国宏观】
+    # 第五排：中国宏观
     "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水力度", "tz": "Asia/Shanghai", "tz_name": "北京"},
-    # 👇 完美替换：华尔街专属的科创50 ETF (KSTR)，数据100%稳定不断更！
-    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "ma": [20, 50], "desc": "中国硬科技，外资做多中国科技的通道", "tz": "America/New_York", "tz_name": "纽约"},
+    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技的通道", "tz": "America/New_York", "tz_name": "纽约"},
     "🇨🇳 人民币汇率 (CNY)": {"ticker": "CNY=X", "ma": [10, 20], "desc": "向上(贬值)外资流出，向下(升值)流入", "tz": "Asia/Shanghai", "tz_name": "北京"}
 }
 
-# 1. 获取数据
-@st.cache_data(ttl=300) 
+# 1. 获取数据 🎯 核心修复：缓存时间改为 30 秒！强制获取新数据！
+@st.cache_data(ttl=30) 
 def fetch_data(ticker):
     try:
         data = yf.Ticker(ticker).history(period="6mo", interval="1d")
@@ -100,7 +97,7 @@ def fetch_data(ticker):
     except Exception as e:
         return None
 
-# 2. 绘制图表 
+# 2. 绘制图表 (如果处于电脑模式才调用)
 def plot_chart(data, title, ma_list, view_mode):
     for ma_days in ma_list:
         data[f'MA_{ma_days}'] = data['Close'].rolling(window=ma_days).mean()
@@ -154,34 +151,54 @@ def plot_chart(data, title, ma_list, view_mode):
     fig.update_xaxes(range=[start_str, end_str], type="date")
     return fig
 
-# 3. 页面渲染
-cols = st.columns(3)
-for index, (name, config) in enumerate(MARKETS.items()):
-    col = cols[index % 3]
-    with col:
+# 3. 🎯 页面渲染分流机制
+if "手机" in view_mode:
+    # 📱 手机极简模式：去掉列限制，垂直堆叠，只显示核心数据，屏蔽沉重的图表
+    st.markdown("---")
+    for name, config in MARKETS.items():
         st.subheader(name)
-        
         tz_obj = pytz.timezone(config["tz"])
         local_time_str = datetime.now(tz_obj).strftime('%m-%d %H:%M')
         st.caption(f"💡 {config['desc']} | 🕒 **{config['tz_name']}: {local_time_str}**")
         
         data = fetch_data(config["ticker"])
-        
         if data is not None and len(data) >= 2:
             current_price = data['Close'].iloc[-1]
             previous_price = data['Close'].iloc[-2]
             change_val = current_price - previous_price
             change_pct = (change_val / previous_price) * 100
-            last_trade_date = data.index[-1].strftime('%Y-%m-%d')
             
-            st.metric(
-                label=f"最新价格 (截至交易日: {last_trade_date})", 
-                value=f"{current_price:.2f}", 
-                delta=f"{change_val:.2f} ({change_pct:.2f}%)"
-            )
-            
-            st.plotly_chart(plot_chart(data, name, config["ma"], view_mode), use_container_width=True)
+            # 使用大字体展示核心指标
+            st.metric(label="最新价格", value=f"{current_price:.2f}", delta=f"{change_val:.2f} ({change_pct:.2f}%)")
         else:
-            st.warning("数据抓取中或接口受限...")
-        
+            st.warning("数据抓取中...")
         st.markdown("---")
+
+else:
+    # 💻 电脑模式：保持 3x5 的十五宫格，带有专业图表
+    cols = st.columns(3)
+    for index, (name, config) in enumerate(MARKETS.items()):
+        col = cols[index % 3]
+        with col:
+            st.subheader(name)
+            tz_obj = pytz.timezone(config["tz"])
+            local_time_str = datetime.now(tz_obj).strftime('%m-%d %H:%M')
+            st.caption(f"💡 {config['desc']} | 🕒 **{config['tz_name']}: {local_time_str}**")
+            
+            data = fetch_data(config["ticker"])
+            if data is not None and len(data) >= 2:
+                current_price = data['Close'].iloc[-1]
+                previous_price = data['Close'].iloc[-2]
+                change_val = current_price - previous_price
+                change_pct = (change_val / previous_price) * 100
+                last_trade_date = data.index[-1].strftime('%Y-%m-%d')
+                
+                st.metric(
+                    label=f"最新价 (截至: {last_trade_date})", 
+                    value=f"{current_price:.2f}", 
+                    delta=f"{change_val:.2f} ({change_pct:.2f}%)"
+                )
+                st.plotly_chart(plot_chart(data, name, config["ma"], view_mode), use_container_width=True)
+            else:
+                st.warning("数据抓取中或接口受限...")
+            st.markdown("---")
