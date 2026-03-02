@@ -127,8 +127,8 @@ MARKETS = {
     "🪖 美军工ETF (ITA)": {"ticker": "ITA", "source": "yahoo", "ma": [20, 50], "desc": "军工龙头集合，爆发冲突时飙升", "tz": "America/New_York", "tz_name": "纽约"},
 
     # 🚀 第二排：加密核心区 (直连 OKX 零延迟通道！)
-    "🪙 比特币 (BTC)": {"ticker": "BTC-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连 OKX】零延迟实时行情", "tz": "UTC", "tz_name": "UTC"},
-    "💠 以太坊 (ETH)": {"ticker": "ETH-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连 OKX】精确同步交易所", "tz": "UTC", "tz_name": "UTC"},
+    "🪙 比特币 (BTC)": {"ticker": "BTC-USDT", "source": "okx", "ma": [7, 30], "desc": "直连okx 数字黄金，对全球资金面最敏感", "tz": "UTC", "tz_name": "UTC"},
+    "💠 以太坊 (ETH)": {"ticker": "ETH-USDT", "source": "okx", "ma": [7, 30], "desc": "直连okx 衡量加密市场真实狂热度的风向标", "tz": "UTC", "tz_name": "UTC"},
     "🏢 微策略 (MSTR)": {"ticker": "MSTR", "source": "yahoo", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的先行指标", "tz": "America/New_York", "tz_name": "纽约"},
 
     # 第三排：股市与情绪 (保持雅虎)
