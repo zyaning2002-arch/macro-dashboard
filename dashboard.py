@@ -7,6 +7,7 @@ from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
 import pytz
 import time
+import requests
 
 # 页面基础设置
 st.set_page_config(page_title="全球宏观与 BTC 战术看板", layout="wide")
@@ -118,33 +119,60 @@ components.html(
     height=45  # 👈 这里把高度从 30 调到了 45，保证手机端换行后不会被切掉！
 )
 
-# 核心配置字典
+# 核心配置字典 (注意看 BTC 和 ETH 的 ticker 变成了 OKX 的交易对格式，并加了 source 标签)
 MARKETS = {
-    "🟡 黄金期货 (Gold)": {"ticker": "GC=F", "ma": [10, 20], "desc": "乱世买黄金，对冲地缘与通胀", "tz": "America/New_York", "tz_name": "纽约"},
-    "🛢️ 原油期货 (WTI)": {"ticker": "CL=F", "ma": [10, 20], "desc": "对中东局势敏感，飙升引发通胀", "tz": "America/New_York", "tz_name": "纽约"},
-    "🪖 美军工ETF (ITA)": {"ticker": "ITA", "ma": [20, 50], "desc": "军工龙头集合，爆发冲突时飙升", "tz": "America/New_York", "tz_name": "纽约"},
-    "🪙 比特币 (BTC)": {"ticker": "BTC-USD", "ma": [7, 30], "desc": "数字黄金，对全球资金面最敏感", "tz": "UTC", "tz_name": "UTC"},
-    "💠 以太坊 (ETH)": {"ticker": "ETH-USD", "ma": [7, 30], "desc": "衡量加密市场真实狂热度的风向标", "tz": "UTC", "tz_name": "UTC"},
-    "🏢 微策略 (MSTR)": {"ticker": "MSTR", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的先行指标", "tz": "America/New_York", "tz_name": "纽约"},
-    "🇺🇸 标普500 (^GSPC)": {"ticker": "^GSPC", "ma": [20, 50], "desc": "美国经济基本面，决定宏观牛熊", "tz": "America/New_York", "tz_name": "纽约"},
-    "🇺🇸 纳斯达克 (^IXIC)": {"ticker": "^IXIC", "ma": [20, 50], "desc": "与BTC高度联动，受降息预期驱动", "tz": "America/New_York", "tz_name": "纽约"},
-    "😨 恐慌指数 (VIX)": {"ticker": "^VIX", "ma": [10, 20], "desc": ">20代表恐慌，暴涨说明华尔街抛售", "tz": "America/New_York", "tz_name": "纽约"},
-    "⚓ 10年期美债 (^TNX)": {"ticker": "^TNX", "ma": [20, 50], "desc": "破4.5%则全面抽干风险资产流动性", "tz": "America/New_York", "tz_name": "纽约"},
-    "💵 美元指数 (DXY)": {"ticker": "DX-Y.NYB", "ma": [20, 50], "desc": "美元强则BTC弱，资金回流美国标志", "tz": "America/New_York", "tz_name": "纽约"},
-    "💣 垃圾债ETF (HYG)": {"ticker": "HYG", "ma": [20, 50], "desc": "暴跌意味资金链断裂，必定带崩BTC", "tz": "America/New_York", "tz_name": "纽约"},
-    "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水", "tz": "Asia/Shanghai", "tz_name": "北京"},
-    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技通道", "tz": "America/New_York", "tz_name": "纽约"},
-    "🇨🇳 人民币汇率 (CNY)": {"ticker": "CNY=X", "ma": [10, 20], "desc": "向上(贬值)外资流出，向下(升值)流入", "tz": "Asia/Shanghai", "tz_name": "北京"}
+    # 第一排：地缘与大宗 (保持雅虎)
+    "🟡 黄金期货 (Gold)": {"ticker": "GC=F", "source": "yahoo", "ma": [10, 20], "desc": "乱世买黄金，对冲地缘与通胀", "tz": "America/New_York", "tz_name": "纽约"},
+    "🛢️ 原油期货 (WTI)": {"ticker": "CL=F", "source": "yahoo", "ma": [10, 20], "desc": "对中东局势敏感，飙升引发通胀", "tz": "America/New_York", "tz_name": "纽约"},
+    "🪖 美军工ETF (ITA)": {"ticker": "ITA", "source": "yahoo", "ma": [20, 50], "desc": "军工龙头集合，爆发冲突时飙升", "tz": "America/New_York", "tz_name": "纽约"},
+
+    # 🚀 第二排：加密核心区 (直连 OKX 零延迟通道！)
+    "🪙 比特币 (BTC)": {"ticker": "BTC-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连 OKX】零延迟实时行情", "tz": "UTC", "tz_name": "UTC"},
+    "💠 以太坊 (ETH)": {"ticker": "ETH-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连 OKX】精确同步交易所", "tz": "UTC", "tz_name": "UTC"},
+    "🏢 微策略 (MSTR)": {"ticker": "MSTR", "source": "yahoo", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的先行指标", "tz": "America/New_York", "tz_name": "纽约"},
+
+    # 第三排：股市与情绪 (保持雅虎)
+    "🇺🇸 标普500 (^GSPC)": {"ticker": "^GSPC", "source": "yahoo", "ma": [20, 50], "desc": "美国经济基本面，决定宏观牛熊", "tz": "America/New_York", "tz_name": "纽约"},
+    "🇺🇸 纳斯达克 (^IXIC)": {"ticker": "^IXIC", "source": "yahoo", "ma": [20, 50], "desc": "与BTC高度联动，受降息预期驱动", "tz": "America/New_York", "tz_name": "纽约"},
+    "😨 恐慌指数 (VIX)": {"ticker": "^VIX", "source": "yahoo", "ma": [10, 20], "desc": ">20代表恐慌，暴涨说明华尔街抛售", "tz": "America/New_York", "tz_name": "纽约"},
+
+    # 第四排：流动性根基 (保持雅虎)
+    "⚓ 10年期美债 (^TNX)": {"ticker": "^TNX", "source": "yahoo", "ma": [20, 50], "desc": "破4.5%则全面抽干风险资产流动性", "tz": "America/New_York", "tz_name": "纽约"},
+    "💵 美元指数 (DXY)": {"ticker": "DX-Y.NYB", "source": "yahoo", "ma": [20, 50], "desc": "美元强则BTC弱，资金回流美国标志", "tz": "America/New_York", "tz_name": "纽约"},
+    "💣 垃圾债ETF (HYG)": {"ticker": "HYG", "source": "yahoo", "ma": [20, 50], "desc": "暴跌意味资金链断裂，必定带崩BTC", "tz": "America/New_York", "tz_name": "纽约"},
+
+    # 第五排：中国宏观 (保持雅虎)
+    "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "source": "yahoo", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水", "tz": "Asia/Shanghai", "tz_name": "北京"},
+    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "source": "yahoo", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技通道", "tz": "America/New_York", "tz_name": "纽约"},
+    "🇨🇳 人民币汇率 (CNY)": {"ticker": "CNY=X", "source": "yahoo", "ma": [10, 20], "desc": "向上(贬值)外资流出，向下(升值)流入", "tz": "Asia/Shanghai", "tz_name": "北京"}
 }
 
-# 1. 获取数据 🎯 核心修复：把 ttl=30 改为 ttl=10，彻底解决缓存撞车导致的“偶尔不更新”问题！
+# 🎯 智能数据抓取引擎：根据 source 标签自动切换数据源
 @st.cache_data(ttl=10) 
-def fetch_data(ticker):
+def fetch_data(ticker, source="yahoo"):
     try:
-        data = yf.Ticker(ticker).history(period="6mo", interval="1d")
-        if data.empty:
+        # 🟢 OKX 高速通道
+        if source == "okx":
+            url = f"https://www.okx.com/api/v5/market/candles?instId={ticker}&bar=1D&limit=180"
+            resp = requests.get(url).json()
+            if resp['code'] == '0':
+                data = resp['data']
+                # OKX返回格式：[ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
+                df = pd.DataFrame(data, columns=['ts', 'Open', 'High', 'Low', 'Close', 'Volume', 'volCcy', 'volCcyQuote', 'confirm'])
+                df['ts'] = pd.to_numeric(df['ts'])
+                df.index = pd.to_datetime(df['ts'], unit='ms', utc=True)
+                df = df.sort_index() # OKX默认是倒序，画图需要正序
+                for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                    df[col] = pd.to_numeric(df[col])
+                return df
             return None
-        return data
+            
+        # 🔵 雅虎常规通道
+        else:
+            data = yf.Ticker(ticker).history(period="6mo", interval="1d")
+            if data.empty:
+                return None
+            return data
     except Exception as e:
         return None
 
@@ -214,7 +242,7 @@ if "手机" in view_mode:
         local_time_str = datetime.now(tz_obj).strftime('%m-%d %H:%M')
         st.caption(f"💡 {config['desc']} | 🕒 **{config['tz_name']}: {local_time_str}**")
         
-        data = fetch_data(config["ticker"])
+        data = fetch_data(config["ticker"], source=config.get("source", "yahoo"))
         if data is not None and len(data) >= 2:
             current_price = data['Close'].iloc[-1]
             previous_price = data['Close'].iloc[-2]
@@ -238,7 +266,7 @@ else:
             local_time_str = datetime.now(tz_obj).strftime('%m-%d %H:%M')
             st.caption(f"💡 {config['desc']} | 🕒 **{config['tz_name']}: {local_time_str}**")
             
-            data = fetch_data(config["ticker"])
+            data = fetch_data(config["ticker"], source=config.get("source", "yahoo"))
             if data is not None and len(data) >= 2:
                 current_price = data['Close'].iloc[-1]
                 previous_price = data['Close'].iloc[-2]
