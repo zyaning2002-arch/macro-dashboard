@@ -65,28 +65,57 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-# 植入前端 Javascript 实现无感丝滑倒计时 (带强制重绘与同步状态)
 import streamlit.components.v1 as components
+
+# 植入前端 Javascript 实现无感丝滑倒计时 (完美适配手机与电脑端)
 components.html(
     f"""
-    <div style="color: #888; font-family: sans-serif; font-size: 14px; display: flex; justify-content: space-between;">
-        <div>数据来源: Yahoo Finance | 主图: 双均线 | 副图: 资金成交量</div>
-        <div id="status_text">🔄 距离下次获取新数据: <span id="timer" style="color: #ff4b4b; font-weight: bold;">30</span> 秒</div>
+    <style>
+        .footer-info {{
+            color: #888; 
+            font-family: sans-serif; 
+            font-size: 14px; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+        }}
+        /* 📱 响应式魔法：当屏幕宽度小于 600px（手机）时，自动变成上下两行 */
+        @media (max-width: 600px) {{
+            .footer-info {{
+                flex-direction: column;
+                justify-content: center;
+                font-size: 12px;
+                gap: 5px;
+            }}
+        }}
+    </style>
+    
+    <div class="footer-info">
+        <div>数据来源: Yahoo Finance | 主图: 双均线 | 副图: 成交量</div>
+        <div id="status_text">🔄 距离下次获取新数据: <span style="color: #ff4b4b; font-weight: bold;">30</span> 秒</div>
     </div>
+    
     <script>
+        // 动态时间戳，强制前端每次感知 Python 的刷新动作: {time.time()}
         var timeleft = 30;
+        var statusText = document.getElementById("status_text");
+        
         var downloadTimer = setInterval(function(){{
             timeleft -= 1;
-            if(timeleft <= 0){{
-                clearInterval(downloadTimer);
-                document.getElementById("status_text").innerHTML = "<span style='color: #ff4b4b; font-weight: bold;'>⚡ 正在从雅虎财经同步最新价格...</span>";
+            if(timeleft > 0){{
+                statusText.innerHTML = "🔄 距离下次刷新还有: <span style='color: #ff4b4b; font-weight: bold;'>" + timeleft + "</span> 秒";
             }} else {{
-                document.getElementById("timer").innerHTML = timeleft;
+                statusText.innerHTML = "<span style='color: #ff4b4b; font-weight: bold;'>⚡ 正在从雅虎财经同步最新价格...</span>";
+                
+                // 智能兜底机制
+                if(timeleft <= -5){{
+                    timeleft = 30;
+                }}
             }}
         }}, 1000);
     </script>
     """,
-    height=30
+    height=45  # 👈 这里把高度从 30 调到了 45，保证手机端换行后不会被切掉！
 )
 
 # 核心配置字典
