@@ -15,7 +15,7 @@ st_autorefresh(interval=30000, key="macro_board_autorefresh")
 
 # 🎯 核心黑科技：全天候宏观倒计时引擎
 def get_market_countdown():
-    now_utc = datetime.now(pytz.utc)
+    now_utc = datetime.now(pytz.utc)     
     now_est = now_utc.astimezone(pytz.timezone('America/New_York'))
     
     # 1. 计算 BTC 日线结算倒计时 (下一个 UTC 00:00)
