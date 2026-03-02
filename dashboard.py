@@ -1,4 +1,3 @@
-import streamlit.components.v1 as components
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
@@ -7,29 +6,31 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
 import pytz
-import time  # 👇 加上这一行新代码
-
-
+import time
 
 # 页面基础设置
 st.set_page_config(page_title="全球宏观与 BTC 战术看板", layout="wide")
 
-# 🎯 后台静默刷新：改为 30000 毫秒 = 30 秒！
+# 后台静默刷新 (30秒)
 st_autorefresh(interval=30000, key="macro_board_autorefresh")
 
-# 核心黑科技：全天候宏观倒计时引擎
-def get_market_countdown():
+# 🎯 核心黑科技 1：全球三大时钟与宏观倒计时双引擎
+def get_global_clocks_and_countdown():
     now_utc = datetime.now(pytz.utc)
     now_est = now_utc.astimezone(pytz.timezone('America/New_York'))
+    now_sh = now_utc.astimezone(pytz.timezone('Asia/Shanghai'))
     
-    # 1. 计算 BTC 日线结算倒计时 (下一个 UTC 00:00)
+    # 🌍 生成全球时钟字符串
+    clock_str = f"🕒 **全球时钟** ｜ 🇨🇳 北京: `{now_sh.strftime('%H:%M')}` ｜ 🇺🇸 纽约: `{now_est.strftime('%H:%M')}` ｜ 🌐 UTC: `{now_utc.strftime('%H:%M')}`"
+    
+    # ⏳ 计算 BTC 日线结算倒计时 (下一个 UTC 00:00)
     next_btc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     if now_utc >= next_btc:
         next_btc += timedelta(days=1)
     btc_hours, btc_rem = divmod((next_btc - now_utc).total_seconds(), 3600)
     btc_mins = btc_rem // 60
 
-    # 2. 计算美股开盘倒计时 (下一个 EST 09:30)
+    # ⏳ 计算美股开盘倒计时 (下一个 EST 09:30)
     next_us = now_est.replace(hour=9, minute=30, second=0, microsecond=0)
     if now_est >= next_us:
         next_us += timedelta(days=1)
@@ -38,11 +39,15 @@ def get_market_countdown():
     us_hours, us_rem = divmod((next_us - now_est).total_seconds(), 3600)
     us_mins = us_rem // 60
     
-    return f"⏳ **实战倒计时** ｜ 🪙 **BTC 日结**: 还有 `{int(btc_hours)}时 {int(btc_mins)}分` ｜ 🇺🇸 **美股开盘**: 还有 `{int(us_hours)}时 {int(us_mins)}分`"
+    countdown_str = f"⏳ **实战倒计时** ｜ 🪙 **BTC 日结**: 还有 `{int(btc_hours)}时 {int(btc_mins)}分` ｜ 🇺🇸 **美股开盘**: 还有 `{int(us_hours)}时 {int(us_mins)}分`"
+    
+    # 将时钟和倒计时分两行显示
+    return clock_str + "  \n" + countdown_str
 
-st.info(get_market_countdown(), icon="⏱️")
+# 渲染顶部信息栏
+st.info(get_global_clocks_and_countdown())
 
-# 🎯 顶部布局升级：加入手机极简模式
+# 顶部布局升级：加入手机极简模式
 col_title, col_view, col_btn = st.columns([3, 5, 2])
 with col_title:
     st.title("🌐 宏观指挥室")
@@ -60,22 +65,20 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-
 # 植入前端 Javascript 实现无感丝滑倒计时 (带强制重绘与同步状态)
+import streamlit.components.v1 as components
 components.html(
     f"""
     <div style="color: #888; font-family: sans-serif; font-size: 14px; display: flex; justify-content: space-between;">
         <div>数据来源: Yahoo Finance | 主图: 双均线 | 副图: 资金成交量</div>
-        <div id="status_text">🔄 距离下次刷新还有: <span id="timer" style="color: #ff4b4b; font-weight: bold;">30</span> 秒</div>
+        <div id="status_text">🔄 距离下次获取新数据: <span id="timer" style="color: #ff4b4b; font-weight: bold;">30</span> 秒</div>
     </div>
     <script>
-        // 动态时间戳强制每次随 Python 一起重绘组件: {time.time()}
         var timeleft = 30;
         var downloadTimer = setInterval(function(){{
             timeleft -= 1;
             if(timeleft <= 0){{
                 clearInterval(downloadTimer);
-                // 数到 0 时，无缝切换为“同步中”状态，填补 Python 下载数据的 2 秒空档期！
                 document.getElementById("status_text").innerHTML = "<span style='color: #ff4b4b; font-weight: bold;'>⚡ 正在从雅虎财经同步最新价格...</span>";
             }} else {{
                 document.getElementById("timer").innerHTML = timeleft;
@@ -88,34 +91,25 @@ components.html(
 
 # 核心配置字典
 MARKETS = {
-    # 第一排：地缘与大宗
     "🟡 黄金期货 (Gold)": {"ticker": "GC=F", "ma": [10, 20], "desc": "乱世买黄金，对冲地缘与通胀", "tz": "America/New_York", "tz_name": "纽约"},
     "🛢️ 原油期货 (WTI)": {"ticker": "CL=F", "ma": [10, 20], "desc": "对中东局势敏感，飙升引发通胀", "tz": "America/New_York", "tz_name": "纽约"},
     "🪖 美军工ETF (ITA)": {"ticker": "ITA", "ma": [20, 50], "desc": "军工龙头集合，爆发冲突时飙升", "tz": "America/New_York", "tz_name": "纽约"},
-
-    # 第二排：加密核心区
     "🪙 比特币 (BTC)": {"ticker": "BTC-USD", "ma": [7, 30], "desc": "数字黄金，对全球资金面最敏感", "tz": "UTC", "tz_name": "UTC"},
     "💠 以太坊 (ETH)": {"ticker": "ETH-USD", "ma": [7, 30], "desc": "衡量加密市场真实狂热度的风向标", "tz": "UTC", "tz_name": "UTC"},
     "🏢 微策略 (MSTR)": {"ticker": "MSTR", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的先行指标", "tz": "America/New_York", "tz_name": "纽约"},
-
-    # 第三排：股市与情绪
     "🇺🇸 标普500 (^GSPC)": {"ticker": "^GSPC", "ma": [20, 50], "desc": "美国经济基本面，决定宏观牛熊", "tz": "America/New_York", "tz_name": "纽约"},
     "🇺🇸 纳斯达克 (^IXIC)": {"ticker": "^IXIC", "ma": [20, 50], "desc": "与BTC高度联动，受降息预期驱动", "tz": "America/New_York", "tz_name": "纽约"},
     "😨 恐慌指数 (VIX)": {"ticker": "^VIX", "ma": [10, 20], "desc": ">20代表恐慌，暴涨说明华尔街抛售", "tz": "America/New_York", "tz_name": "纽约"},
-
-    # 第四排：流动性根基
     "⚓ 10年期美债 (^TNX)": {"ticker": "^TNX", "ma": [20, 50], "desc": "破4.5%则全面抽干风险资产流动性", "tz": "America/New_York", "tz_name": "纽约"},
     "💵 美元指数 (DXY)": {"ticker": "DX-Y.NYB", "ma": [20, 50], "desc": "美元强则BTC弱，资金回流美国标志", "tz": "America/New_York", "tz_name": "纽约"},
     "💣 垃圾债ETF (HYG)": {"ticker": "HYG", "ma": [20, 50], "desc": "暴跌意味资金链断裂，必定带崩BTC", "tz": "America/New_York", "tz_name": "纽约"},
-
-    # 第五排：中国宏观
-    "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水力度", "tz": "Asia/Shanghai", "tz_name": "北京"},
-    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技的通道", "tz": "America/New_York", "tz_name": "纽约"},
+    "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水", "tz": "Asia/Shanghai", "tz_name": "北京"},
+    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技通道", "tz": "America/New_York", "tz_name": "纽约"},
     "🇨🇳 人民币汇率 (CNY)": {"ticker": "CNY=X", "ma": [10, 20], "desc": "向上(贬值)外资流出，向下(升值)流入", "tz": "Asia/Shanghai", "tz_name": "北京"}
 }
 
-# 1. 获取数据 🎯 核心修复：缓存时间改为 30 秒！强制获取新数据！
-@st.cache_data(ttl=30) 
+# 1. 获取数据 🎯 核心修复：把 ttl=30 改为 ttl=10，彻底解决缓存撞车导致的“偶尔不更新”问题！
+@st.cache_data(ttl=10) 
 def fetch_data(ticker):
     try:
         data = yf.Ticker(ticker).history(period="6mo", interval="1d")
@@ -124,6 +118,8 @@ def fetch_data(ticker):
         return data
     except Exception as e:
         return None
+
+# ==================== (下方是你原来的 def plot_chart 和页面渲染分流机制代码，保持不动) ====================
 
 # 2. 绘制图表 (如果处于电脑模式才调用)
 def plot_chart(data, title, ma_list, view_mode):
