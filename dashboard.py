@@ -117,7 +117,7 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-# 植入前端 Javascript (动态注入 CONFIG 中的秒数)
+# 植入前端 Javascript (引入 Date.now() 解决浏览器休眠导致的计时不同步问题)
 components.html(
     f"""
     <style>
@@ -129,17 +129,26 @@ components.html(
         <div id="status_text">🔄 全局极速刷新倒数: <span style="color: #10B981; font-weight: bold;">{CONFIG["GLOBAL_REFRESH_SEC"]}</span> 秒</div>
     </div>
     <script>
-        var timeleft = {CONFIG["GLOBAL_REFRESH_SEC"]};
+        // 使用真实物理时间，彻底避免浏览器后台休眠或执行延迟造成的倒计时变慢！
+        var refresh_sec = {CONFIG["GLOBAL_REFRESH_SEC"]};
+        var targetTime = Date.now() + (refresh_sec * 1000);
         var statusText = document.getElementById("status_text");
+        
         var downloadTimer = setInterval(function(){{
-            timeleft -= 1;
+            var now = Date.now();
+            // 用目标时间减去现在的绝对时间，得出极其精准的剩余秒数
+            var timeleft = Math.ceil((targetTime - now) / 1000);
+            
             if(timeleft > 0){{
                 statusText.innerHTML = "🔄 全局极速刷新倒数: <span style='color: #10B981; font-weight: bold;'>" + timeleft + "</span> 秒";
             }} else {{
                 statusText.innerHTML = "<span style='color: #10B981; font-weight: bold;'>⚡ 正在同步多源高速数据...</span>";
-                if(timeleft <= -5) timeleft = {CONFIG["GLOBAL_REFRESH_SEC"]};
+                // 智能兜底：如果后端因为网络延迟超过5秒未完成刷新，强制重置倒计时
+                if(timeleft <= -5) {{
+                    targetTime = Date.now() + (refresh_sec * 1000); 
+                }}
             }}
-        }}, 1000);
+        }}, 200); // 检测频率从 1000ms 提高到 200ms，保证视觉更新丝滑无延迟
     </script>
     """,
     height=45
