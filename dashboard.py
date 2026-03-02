@@ -14,8 +14,9 @@ import streamlit.components.v1 as components
 # 0. 🎛️ 全局核心控制台
 # ==========================================
 CONFIG = {
-    "GLOBAL_REFRESH_SEC": 15,    # OKX 极速刷新与网页整体心跳 (秒)
-    "YAHOO_CACHE_SEC": 115       # 雅虎 数据缓存时间 (秒)
+    "GLOBAL_REFRESH_SEC": 15,    # 网页整体心跳与前端刷新周期 (秒)
+    "OKX_CACHE_SEC": 10,         # 必须小于15！确保每次15秒刷新时必定穿透去拿新数据
+    "YAHOO_CACHE_SEC": 115       # 必须小于120！保证第8次刷新(120秒)时必定穿透
 }
 
 # ==========================================
@@ -57,7 +58,7 @@ MARKETS = {
 # ==========================================
 # 3. 异步双通道数据抓取引擎
 # ==========================================
-@st.cache_data(ttl=CONFIG["GLOBAL_REFRESH_SEC"]) 
+@st.cache_data(ttl=CONFIG["OKX_CACHE_SEC"])  # 👈 就是把这里括号里面的名字改掉
 def fetch_okx_data(ticker):
     try:
         url = f"https://www.okx.com/api/v5/market/candles?instId={ticker}&bar=1D&limit=180"
