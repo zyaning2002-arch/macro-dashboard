@@ -1,3 +1,4 @@
+import streamlit.components.v1 as components
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
@@ -6,7 +7,9 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
 import pytz
-import streamlit.components.v1 as components
+import time  # 👇 加上这一行新代码
+
+
 
 # 页面基础设置
 st.set_page_config(page_title="全球宏观与 BTC 战术看板", layout="wide")
@@ -58,24 +61,26 @@ with col_btn:
         st.rerun()
 
 
-# 植入前端 Javascript 实现无感丝滑倒计时
+# 植入前端 Javascript 实现无感丝滑倒计时 (带强制重绘与同步状态)
 components.html(
-    """
+    f"""
     <div style="color: #888; font-family: sans-serif; font-size: 14px; display: flex; justify-content: space-between;">
         <div>数据来源: Yahoo Finance | 主图: 双均线 | 副图: 资金成交量</div>
-        <div>🔄 距离下次获取最新数据还有: <span id="timer" style="color: #ff4b4b; font-weight: bold;">30</span> 秒</div>
+        <div id="status_text">🔄 距离下次刷新还有: <span id="timer" style="color: #ff4b4b; font-weight: bold;">30</span> 秒</div>
     </div>
     <script>
+        // 动态时间戳强制每次随 Python 一起重绘组件: {time.time()}
         var timeleft = 30;
-        var downloadTimer = setInterval(function(){
+        var downloadTimer = setInterval(function(){{
             timeleft -= 1;
-            if(timeleft <= 0){
+            if(timeleft <= 0){{
                 clearInterval(downloadTimer);
-                document.getElementById("timer").innerHTML = "0";
-            } else {
+                // 数到 0 时，无缝切换为“同步中”状态，填补 Python 下载数据的 2 秒空档期！
+                document.getElementById("status_text").innerHTML = "<span style='color: #ff4b4b; font-weight: bold;'>⚡ 正在从雅虎财经同步最新价格...</span>";
+            }} else {{
                 document.getElementById("timer").innerHTML = timeleft;
-            }
-        }, 1000);
+            }}
+        }}, 1000);
     </script>
     """,
     height=30
