@@ -6,6 +6,7 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime, timedelta
 import pytz
+import streamlit.components.v1 as components
 
 # 页面基础设置
 st.set_page_config(page_title="全球宏观与 BTC 战术看板", layout="wide")
@@ -56,7 +57,29 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-st.markdown("数据来源: Yahoo Finance | 主图: 双均线 | 自动刷新: **30秒**")
+
+# 植入前端 Javascript 实现无感丝滑倒计时
+components.html(
+    """
+    <div style="color: #888; font-family: sans-serif; font-size: 14px; display: flex; justify-content: space-between;">
+        <div>数据来源: Yahoo Finance | 主图: 双均线 | 副图: 资金成交量</div>
+        <div>🔄 距离下次获取最新数据还有: <span id="timer" style="color: #ff4b4b; font-weight: bold;">30</span> 秒</div>
+    </div>
+    <script>
+        var timeleft = 30;
+        var downloadTimer = setInterval(function(){
+            timeleft -= 1;
+            if(timeleft <= 0){
+                clearInterval(downloadTimer);
+                document.getElementById("timer").innerHTML = "0";
+            } else {
+                document.getElementById("timer").innerHTML = timeleft;
+            }
+        }, 1000);
+    </script>
+    """,
+    height=30
+)
 
 # 核心配置字典
 MARKETS = {
