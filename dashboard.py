@@ -35,7 +35,7 @@ def get_market_countdown():
     us_hours, us_rem = divmod((next_us - now_est).total_seconds(), 3600)
     us_mins = us_rem // 60
     
-    return f"⏳ **实战倒计时** ｜ 🪙 **BTC 日线结算**: 还有 `{int(btc_hours)}小时 {int(btc_mins)}分` ｜ 🇺🇸 **华尔街美股开盘**: 还有 `{int(us_hours)}小时 {int(us_mins)}分`"
+    return f"⏳ **test实战倒计时** ｜ 🪙 **BTC 日线结算**: 还有 `{int(btc_hours)}小时 {int(btc_mins)}分` ｜ 🇺🇸 **华尔街美股开盘**: 还有 `{int(us_hours)}小时 {int(us_mins)}分`"
 
 # 渲染顶部倒计时横幅 (使用显眼的 Info 框)
 st.info(get_market_countdown(), icon="⏱️")
