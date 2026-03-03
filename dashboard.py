@@ -32,7 +32,6 @@ st.markdown("""
     header { visibility: hidden; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
-    /* 优化手机端简介文字显示 */
     .market-desc { font-size: 0.8rem; color: #888; margin-top: -10px; margin-bottom: 5px; }
     </style>
     """, unsafe_allow_html=True)
@@ -46,24 +45,52 @@ global_target_epoch = time.time() + CONFIG["GLOBAL_REFRESH_SEC"]
 yahoo_target_epoch = st.session_state.yahoo_target_epoch
 
 # ==========================================
-# 2. 核心行情字典 (保留战术灵魂)
+# 2. 🌍 恢复：全球时钟与倒计时功能
+# ==========================================
+def get_global_clocks_and_countdown():
+    now_utc = datetime.now(pytz.utc)
+    now_est = now_utc.astimezone(pytz.timezone('America/New_York'))
+    now_sh = now_utc.astimezone(pytz.timezone('Asia/Shanghai'))
+    
+    clock_str = f"🕒 **全球时钟** ｜ 🇨🇳 北京: `{now_sh.strftime('%H:%M')}` ｜ 🇺🇸 纽约: `{now_est.strftime('%H:%M')}` ｜ 🌐 UTC: `{now_utc.strftime('%H:%M')}`"
+    
+    next_btc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    if now_utc >= next_btc: next_btc += timedelta(days=1)
+    btc_hours, btc_rem = divmod((next_btc - now_utc).total_seconds(), 3600)
+    
+    next_us = now_est.replace(hour=9, minute=30, second=0, microsecond=0)
+    if now_est >= next_us: next_us += timedelta(days=1)
+    while next_us.weekday() > 4: next_us += timedelta(days=1)
+    us_hours, us_rem = divmod((next_us - now_est).total_seconds(), 3600)
+    
+    countdown_str = f"⏳ **实战倒计时** ｜ 🪙 **BTC 日结**: 还有 `{int(btc_hours)}时 {int(btc_rem // 60)}分` ｜ 🇺🇸 **美股开盘**: 还有 `{int(us_hours)}时 {int(us_rem // 60)}分`"
+    return clock_str + "  \n" + countdown_str
+
+st.info(get_global_clocks_and_countdown())
+
+# ==========================================
+# 3. 核心行情字典 (15个完整指标无删减版)
 # ==========================================
 MARKETS = {
     "🟡 黄金期货 (Gold)": {"ticker": "GC=F", "source": "yahoo", "ma": [10, 20], "desc": "乱世买黄金，对冲地缘与通胀", "tz": "America/New_York", "tz_name": "纽约"},
     "🛢️ 原油期货 (WTI)": {"ticker": "CL=F", "source": "yahoo", "ma": [10, 20], "desc": "对中东局势敏感，飙升引发通胀", "tz": "America/New_York", "tz_name": "纽约"},
+    "🪖 美军工ETF (ITA)": {"ticker": "ITA", "source": "yahoo", "ma": [20, 50], "desc": "军工龙头集合，爆发冲突时飙升", "tz": "America/New_York", "tz_name": "纽约"},
     "🪙 比特币 (BTC)": {"ticker": "BTC-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连OKX】零延迟实时行情", "tz": "UTC", "tz_name": "UTC"},
     "💠 以太坊 (ETH)": {"ticker": "ETH-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连OKX】精确同步交易所", "tz": "UTC", "tz_name": "UTC"},
     "🏢 微策略 (MSTR)": {"ticker": "MSTR", "source": "yahoo", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的先行指标", "tz": "America/New_York", "tz_name": "纽约"},
-    "🇺🇸 标普500": {"ticker": "^GSPC", "source": "yahoo", "ma": [20, 50], "desc": "美国经济基本面，决定宏观牛熊", "tz": "America/New_York", "tz_name": "纽约"},
-    "🇺🇸 纳斯达克": {"ticker": "^IXIC", "source": "yahoo", "ma": [20, 50], "desc": "与BTC高度联动，受降息预期驱动", "tz": "America/New_York", "tz_name": "纽约"},
+    "🇺🇸 标普500 (^GSPC)": {"ticker": "^GSPC", "source": "yahoo", "ma": [20, 50], "desc": "美国经济基本面，决定宏观牛熊", "tz": "America/New_York", "tz_name": "纽约"},
+    "🇺🇸 纳斯达克 (^IXIC)": {"ticker": "^IXIC", "source": "yahoo", "ma": [20, 50], "desc": "与BTC高度联动，受降息预期驱动", "tz": "America/New_York", "tz_name": "纽约"},
     "😨 恐慌指数 (VIX)": {"ticker": "^VIX", "source": "yahoo", "ma": [10, 20], "desc": ">20代表恐慌，暴涨说明华尔街抛售", "tz": "America/New_York", "tz_name": "纽约"},
-    "⚓ 10年期美债": {"ticker": "^TNX", "source": "yahoo", "ma": [20, 50], "desc": "破4.5%则全面抽干风险资产流动性", "tz": "America/New_York", "tz_name": "纽约"},
-    "💵 美元指数": {"ticker": "DX-Y.NYB", "source": "yahoo", "ma": [20, 50], "desc": "美元强则BTC弱，资金回流美国标志", "tz": "America/New_York", "tz_name": "纽约"},
-    "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "source": "yahoo", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水", "tz": "Asia/Shanghai", "tz_name": "北京"}
+    "⚓ 10年期美债 (^TNX)": {"ticker": "^TNX", "source": "yahoo", "ma": [20, 50], "desc": "破4.5%则全面抽干风险资产流动性", "tz": "America/New_York", "tz_name": "纽约"},
+    "💵 美元指数 (DXY)": {"ticker": "DX-Y.NYB", "source": "yahoo", "ma": [20, 50], "desc": "美元强则BTC弱，资金回流美国标志", "tz": "America/New_York", "tz_name": "纽约"},
+    "💣 垃圾债ETF (HYG)": {"ticker": "HYG", "source": "yahoo", "ma": [20, 50], "desc": "暴跌意味资金链断裂，必定带崩BTC", "tz": "America/New_York", "tz_name": "纽约"},
+    "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "source": "yahoo", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水", "tz": "Asia/Shanghai", "tz_name": "北京"},
+    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "source": "yahoo", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技", "tz": "America/New_York", "tz_name": "纽约"},
+    "🇨🇳 人民币汇率 (CNY)": {"ticker": "CNY=X", "source": "yahoo", "ma": [10, 20], "desc": "向上(贬值)外资流出，向下(升值)流入", "tz": "Asia/Shanghai", "tz_name": "北京"}
 }
 
 # ==========================================
-# 3. 🎯 防内存泄漏数据引擎 (加入 max_entries)
+# 4. 防内存泄漏数据引擎
 # ==========================================
 @st.cache_data(ttl=CONFIG["OKX_CACHE_SEC"], max_entries=20) 
 def fetch_okx_data(ticker):
@@ -87,12 +114,20 @@ def fetch_yahoo_data(ticker):
     except: return None
 
 # ==========================================
-# 4. 适配版 UI 顶栏 (加入物理级硬重启防卡顿)
+# 5. 适配版 UI 顶栏 (恢复手动刷新按钮！)
 # ==========================================
-st.markdown(f"### 🌐 宏观指挥室")
-view_mode = st.radio("视图", ["🔥 短线", "🌍 宏观", "📱 极简"], horizontal=True, label_visibility="collapsed")
+col_title, col_view, col_btn = st.columns([3, 5, 2])
+with col_title:
+    st.markdown(f"### 🌐 宏观指挥室")
+with col_view:
+    view_mode = st.radio("视图", ["🔥 短线", "🌍 宏观", "📱 极简"], horizontal=True, label_visibility="collapsed")
+with col_btn:
+    if st.button("🔄 手动强制刷新", use_container_width=True):
+        st.cache_data.clear()
+        st.session_state.yahoo_target_epoch = time.time() + CONFIG["YAHOO_CACHE_SEC"]
+        st.rerun()
 
-# 引入 1小时硬刷新机制 (setTimeout)，彻底清除浏览器 DOM 内存泄漏
+# 物理级状态栏与硬重启机制
 components.html(
     f"""
     <style>
@@ -102,21 +137,19 @@ components.html(
         }}
     </style>
     <div class="status-bar">
-        <div>🚀 OKX 直连: <span id="g_t">--</span> s</div>
-        <div>🌍 Yahoo 宏观: <span id="y_t">--</span> s</div>
+        <div>🚀 OKX 直连极速: <span id="g_t">--</span> s</div>
+        <div>🌍 Yahoo 宏观防封: <span id="y_t">--</span> s</div>
     </div>
     <script>
         var g_ms = {global_target_epoch} * 1000;
         var y_ms = {yahoo_target_epoch} * 1000;
-        
-        // 常规 UI 倒计时
         setInterval(function(){{
             var now = Date.now();
             document.getElementById("g_t").innerHTML = Math.max(0, Math.ceil((g_ms - now)/1000));
             document.getElementById("y_t").innerHTML = Math.max(0, Math.ceil((y_ms - now)/1000));
         }}, 200);
 
-        // 💣 内存清理核武器：每隔 1 小时强制让浏览器物理 F5 刷新，清空所有内存垃圾！
+        // 💣 内存清理核武器：每隔 1 小时强制物理 F5 刷新
         setTimeout(function(){{
             window.location.reload(true);
         }}, 3600000); 
@@ -125,7 +158,7 @@ components.html(
 )
 
 # ==========================================
-# 5. 图表绘制 (UTC 时区强制剥离)
+# 6. 图表绘制 (时区安全剥离)
 # ==========================================
 def plot_chart(data, ma_list, view_mode, target_tz):
     plot_data = data.copy()
@@ -134,7 +167,6 @@ def plot_chart(data, ma_list, view_mode, target_tz):
     plot_data.index = plot_data.index.tz_convert(target_tz).tz_localize(None)
     
     for ma in ma_list: plot_data[f'MA{ma}'] = plot_data['Close'].rolling(window=ma).mean()
-        
     if "短线" in view_mode or "极简" in view_mode: plot_data = plot_data.tail(15)
         
     chart_height = 180 if "极简" in view_mode else 220
@@ -158,7 +190,7 @@ def plot_chart(data, ma_list, view_mode, target_tz):
     return fig
 
 # ==========================================
-# 6. 渲染逻辑 (完美恢复战术简介)
+# 7. 渲染逻辑 (十五宫格全量展示)
 # ==========================================
 display_cols = 1 if "极简" in view_mode else 3
 cols = st.columns(display_cols)
@@ -173,7 +205,6 @@ for index, (name, config) in enumerate(MARKETS.items()):
             diff = curr - prev
             pct = (diff / prev) * 100
             
-            # 把灵魂带回来！显示在名字下方，小字体不占空间
             st.write(f"**{name}**")
             st.markdown(f"<div class='market-desc'>💡 {config['desc']} | 🕒 {config['tz_name']}</div>", unsafe_allow_html=True)
             
