@@ -82,7 +82,7 @@ MARKETS = {
 
     # 第三排：周末增量雷达区 (BTC专精辅助)
     "⚖️ ETH/BTC 汇率": {"ticker": "ETH-BTC", "source": "okx", "ma": [7, 30], "desc": "【资金跷跷板】上升代表全市场山寨看多情绪", "tz": "UTC", "tz_name": "UTC"},
-    "💵 稳定币场外溢价": {"ticker": "USDT-USDC", "source": "okx", "ma": [7, 30], "desc": "【入场雷达】>1代表场外买盘/亚洲资金正在进场", "tz": "UTC", "tz_name": "UTC"},
+    "💵 稳定币场外溢价": {"ticker": "USDC-USDT", "source": "okx", "ma": [7, 30], "desc": "【入场雷达】>1代表场外买盘/亚洲资金正在进场", "tz": "UTC", "tz_name": "UTC"},
     "🏛️ Coinbase (COIN)": {"ticker": "COIN", "source": "yahoo", "ma": [20, 50], "desc": "美国正规军入口，华尔街主力买卖意愿投影", "tz": "America/New_York", "tz_name": "纽约"},
 
     # 第四排：股市与机构情绪 (VIX 回归！)
@@ -193,7 +193,7 @@ def plot_chart(data, ma_list, view_mode, target_tz):
     return fig
 
 # ==========================================
-# 7. 渲染逻辑 (携带时间窗口拉取)
+# 7. 渲染逻辑 (携带时间窗口拉取，包含稳定币反转魔法)
 # ==========================================
 display_cols = 1 if "极简" in view_mode else 3
 cols = st.columns(display_cols)
@@ -206,6 +206,15 @@ for index, (name, config) in enumerate(MARKETS.items()):
             data = fetch_yahoo_data(config["ticker"], yahoo_window)
         
         if data is not None and len(data) >= 2:
+            
+            # 💡 核心魔法：如果是 USDC-USDT，克隆数据并将所有价格取倒数，完美合成为你想要的 USDT 溢价视角！
+            if config["ticker"] == "USDC-USDT":
+                data = data.copy()
+                for col in ['Open', 'High', 'Low', 'Close']:
+                    data[col] = 1 / data[col]
+                # 倒数之后，原来的最高价会变成最低价，所以需要互换 High 和 Low
+                data['High'], data['Low'] = data['Low'].copy(), data['High'].copy()
+
             curr = data['Close'].iloc[-1]
             prev = data['Close'].iloc[-2]
             diff = curr - prev
@@ -216,7 +225,8 @@ for index, (name, config) in enumerate(MARKETS.items()):
             st.write(f"**{name}**")
             st.markdown(f"<div class='market-desc'>💡 {config['desc']} | 🕒 {config['tz_name']}: {local_time}</div>", unsafe_allow_html=True)
             
-            if config["ticker"] in ["USDT-USDC", "ETH-BTC"]:
+            # 这里的判断条件也要改成 USDC-USDT，保证稳定币显示 4 位小数
+            if config["ticker"] in ["USDC-USDT", "ETH-BTC"]:
                 st.metric(label="", value=f"{curr:.4f}", delta=f"{diff:.4f} ({pct:.2f}%)", label_visibility="collapsed")
             else:
                 st.metric(label="", value=f"{curr:.2f}", delta=f"{diff:.2f} ({pct:.2f}%)", label_visibility="collapsed")
