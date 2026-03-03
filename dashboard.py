@@ -45,7 +45,7 @@ global_target_epoch = time.time() + CONFIG["GLOBAL_REFRESH_SEC"]
 yahoo_target_epoch = st.session_state.yahoo_target_epoch
 
 # ==========================================
-# 2. 🌍 恢复：全球时钟与倒计时功能
+# 2. 🌍 全球时钟与倒计时功能
 # ==========================================
 def get_global_clocks_and_countdown():
     now_utc = datetime.now(pytz.utc)
@@ -69,23 +69,37 @@ def get_global_clocks_and_countdown():
 st.info(get_global_clocks_and_countdown())
 
 # ==========================================
-# 3. 核心行情字典 (15个完整指标无删减版)
+# 3. 核心行情字典 (完美 18 宫格，加入周末 24h 战术指标)
 # ==========================================
 MARKETS = {
+    # 传统宏观
     "🟡 黄金期货 (Gold)": {"ticker": "GC=F", "source": "yahoo", "ma": [10, 20], "desc": "乱世买黄金，对冲地缘与通胀", "tz": "America/New_York", "tz_name": "纽约"},
     "🛢️ 原油期货 (WTI)": {"ticker": "CL=F", "source": "yahoo", "ma": [10, 20], "desc": "对中东局势敏感，飙升引发通胀", "tz": "America/New_York", "tz_name": "纽约"},
     "🪖 美军工ETF (ITA)": {"ticker": "ITA", "source": "yahoo", "ma": [20, 50], "desc": "军工龙头集合，爆发冲突时飙升", "tz": "America/New_York", "tz_name": "纽约"},
-    "🪙 比特币 (BTC)": {"ticker": "BTC-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连OKX】零延迟实时行情", "tz": "UTC", "tz_name": "UTC"},
-    "💠 以太坊 (ETH)": {"ticker": "ETH-USDT", "source": "okx", "ma": [7, 30], "desc": "【直连OKX】精确同步交易所", "tz": "UTC", "tz_name": "UTC"},
-    "🏢 微策略 (MSTR)": {"ticker": "MSTR", "source": "yahoo", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的先行指标", "tz": "America/New_York", "tz_name": "纽约"},
+    
+    # 核心加密区 (7x24小时，简介战术化)
+    "🪙 比特币 (BTC)": {"ticker": "BTC-USDT", "source": "okx", "ma": [7, 30], "desc": "数字黄金，全球流动性扩张的终极蓄水池", "tz": "UTC", "tz_name": "UTC"},
+    "💠 以太坊 (ETH)": {"ticker": "ETH-USDT", "source": "okx", "ma": [7, 30], "desc": "币圈风向标，反映链上生态的真实活跃度", "tz": "UTC", "tz_name": "UTC"},
+    "🏢 微策略 (MSTR)": {"ticker": "MSTR", "source": "yahoo", "ma": [20, 50], "desc": "美股BTC杠杆，现货行情的高敏先行指标", "tz": "America/New_York", "tz_name": "纽约"},
+
+    # 周末/场内情绪异动区 (新增！)
+    "☀️ 索拉纳 (SOL)": {"ticker": "SOL-USDT", "source": "okx", "ma": [7, 30], "desc": "【周末先锋】链上游资高敏Beta，判断场内热度", "tz": "UTC", "tz_name": "UTC"},
+    "🐕 狗狗币 (DOGE)": {"ticker": "DOGE-USDT", "source": "okx", "ma": [7, 30], "desc": "【情绪极限】散户FOMO放大器，异动常预示见顶", "tz": "UTC", "tz_name": "UTC"},
+    "🪙 奥迪 (ORDI)": {"ticker": "ORDI-USDT", "source": "okx", "ma": [7, 30], "desc": "【生态引擎】比特币主网活跃度与矿工情绪镜像", "tz": "UTC", "tz_name": "UTC"},
+
+    # 股市与情绪
     "🇺🇸 标普500 (^GSPC)": {"ticker": "^GSPC", "source": "yahoo", "ma": [20, 50], "desc": "美国经济基本面，决定宏观牛熊", "tz": "America/New_York", "tz_name": "纽约"},
     "🇺🇸 纳斯达克 (^IXIC)": {"ticker": "^IXIC", "source": "yahoo", "ma": [20, 50], "desc": "与BTC高度联动，受降息预期驱动", "tz": "America/New_York", "tz_name": "纽约"},
-    "😨 恐慌指数 (VIX)": {"ticker": "^VIX", "source": "yahoo", "ma": [10, 20], "desc": ">20代表恐慌，暴涨说明华尔街抛售", "tz": "America/New_York", "tz_name": "纽约"},
+    "😨 恐慌指数 (VIX)": {"ticker": "^VIX", "source": "yahoo", "ma": [10, 20], "desc": ">20代表恐慌，暴涨说明华尔街大举抛售", "tz": "America/New_York", "tz_name": "纽约"},
+
+    # 流动性根基
     "⚓ 10年期美债 (^TNX)": {"ticker": "^TNX", "source": "yahoo", "ma": [20, 50], "desc": "破4.5%则全面抽干风险资产流动性", "tz": "America/New_York", "tz_name": "纽约"},
     "💵 美元指数 (DXY)": {"ticker": "DX-Y.NYB", "source": "yahoo", "ma": [20, 50], "desc": "美元强则BTC弱，资金回流美国标志", "tz": "America/New_York", "tz_name": "纽约"},
     "💣 垃圾债ETF (HYG)": {"ticker": "HYG", "source": "yahoo", "ma": [20, 50], "desc": "暴跌意味资金链断裂，必定带崩BTC", "tz": "America/New_York", "tz_name": "纽约"},
+
+    # 中国宏观
     "🇨🇳 上证指数 (大A)": {"ticker": "000001.SS", "source": "yahoo", "ma": [20, 50], "desc": "反映国内传统经济基本面与央行放水", "tz": "Asia/Shanghai", "tz_name": "北京"},
-    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "source": "yahoo", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技", "tz": "America/New_York", "tz_name": "纽约"},
+    "🚀 科创50 ETF (KSTR)": {"ticker": "KSTR", "source": "yahoo", "ma": [20, 50], "desc": "【新质生产力】华尔街做多中国科技通道", "tz": "America/New_York", "tz_name": "纽约"},
     "🇨🇳 人民币汇率 (CNY)": {"ticker": "CNY=X", "source": "yahoo", "ma": [10, 20], "desc": "向上(贬值)外资流出，向下(升值)流入", "tz": "Asia/Shanghai", "tz_name": "北京"}
 }
 
@@ -114,7 +128,7 @@ def fetch_yahoo_data(ticker):
     except: return None
 
 # ==========================================
-# 5. 适配版 UI 顶栏 (恢复手动刷新按钮！)
+# 5. UI 顶栏 (包含手动刷新)
 # ==========================================
 col_title, col_view, col_btn = st.columns([3, 5, 2])
 with col_title:
@@ -127,7 +141,6 @@ with col_btn:
         st.session_state.yahoo_target_epoch = time.time() + CONFIG["YAHOO_CACHE_SEC"]
         st.rerun()
 
-# 物理级状态栏与硬重启机制
 components.html(
     f"""
     <style>
@@ -149,16 +162,13 @@ components.html(
             document.getElementById("y_t").innerHTML = Math.max(0, Math.ceil((y_ms - now)/1000));
         }}, 200);
 
-        // 💣 内存清理核武器：每隔 1 小时强制物理 F5 刷新
-        setTimeout(function(){{
-            window.location.reload(true);
-        }}, 3600000); 
+        setTimeout(function(){{ window.location.reload(true); }}, 3600000); 
     </script>
     """, height=75
 )
 
 # ==========================================
-# 6. 图表绘制 (时区安全剥离)
+# 6. 图表绘制 (时区剥离 + Hover纯净版)
 # ==========================================
 def plot_chart(data, ma_list, view_mode, target_tz):
     plot_data = data.copy()
@@ -174,23 +184,26 @@ def plot_chart(data, ma_list, view_mode, target_tz):
     
     fig.add_trace(go.Candlestick(
         x=plot_data.index, open=plot_data['Open'], high=plot_data['High'], low=plot_data['Low'], close=plot_data['Close'], 
-        name="Price", increasing_line_color='#26A69A', decreasing_line_color='#EF5350', showlegend=False
+        name="K线数据", increasing_line_color='#26A69A', decreasing_line_color='#EF5350', showlegend=False
     ), row=1, col=1)
     
+    # 💡 核心魔法：hoverinfo='skip' 彻底屏蔽均线的鼠标悬停干扰！
     for i, ma in enumerate(ma_list):
-        fig.add_trace(go.Scatter(x=plot_data.index, y=plot_data[f'MA{ma}'], line=dict(width=1), name=f'MA{ma}'), row=1, col=1)
+        fig.add_trace(go.Scatter(x=plot_data.index, y=plot_data[f'MA{ma}'], line=dict(width=1), name=f'MA{ma}', hoverinfo='skip'), row=1, col=1)
 
     if 'Volume' in plot_data.columns:
         vol_colors = ['#26A69A' if r['Close'] >= r['Open'] else '#EF5350' for i, r in plot_data.iterrows()]
-        fig.add_trace(go.Bar(x=plot_data.index, y=plot_data['Volume'], marker_color=vol_colors, showlegend=False), row=2, col=1)
+        fig.add_trace(go.Bar(x=plot_data.index, y=plot_data['Volume'], marker_color=vol_colors, showlegend=False, hoverinfo='skip'), row=2, col=1)
 
     fig.update_layout(margin=dict(l=5, r=5, t=5, b=5), height=chart_height, xaxis_rangeslider_visible=False, 
                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                       legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", font=dict(size=10)))
+    # 设置统一的 Hover 交互模式为 "x unified"，看 K 线极度丝滑
+    fig.update_layout(hovermode="x unified")
     return fig
 
 # ==========================================
-# 7. 渲染逻辑 (十五宫格全量展示)
+# 7. 渲染逻辑 (完美恢复具体时间与 18 宫格)
 # ==========================================
 display_cols = 1 if "极简" in view_mode else 3
 cols = st.columns(display_cols)
@@ -205,8 +218,12 @@ for index, (name, config) in enumerate(MARKETS.items()):
             diff = curr - prev
             pct = (diff / prev) * 100
             
+            # 💡 核心修复：精准计算该指标所在时区的具体当前时间
+            local_time = datetime.now(pytz.timezone(config['tz'])).strftime('%m-%d %H:%M')
+            
             st.write(f"**{name}**")
-            st.markdown(f"<div class='market-desc'>💡 {config['desc']} | 🕒 {config['tz_name']}</div>", unsafe_allow_html=True)
+            # 把具体时间拼接到简介后面
+            st.markdown(f"<div class='market-desc'>💡 {config['desc']} | 🕒 {config['tz_name']}: {local_time}</div>", unsafe_allow_html=True)
             
             st.metric(label="", value=f"{curr:.2f}", delta=f"{diff:.2f} ({pct:.2f}%)", label_visibility="collapsed")
             st.plotly_chart(plot_chart(data, config["ma"], view_mode, config["tz"]), use_container_width=True, config={'displayModeBar': False})
